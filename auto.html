@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>Auto Open Test</title>
+</head>
+<body style="text-align: center; padding-top: 50px; font-family: sans-serif;">
+
+  <h2>جاري فتح الصفحة تلقائياً...</h2>
+  <p>إذا لم تفتح تلقائياً بسبب حظر النوافذ، اضغط على الرابط بالأسفل:</p>
+  
+  <br>
+  <a id="manualLink" href="https://www.google.com" target="_blank" style="font-size: 20px; color: blue; font-weight: bold;">
+    فتح الرابط يدوياً
+  </a>
+
+  <script>
+    // 1. محاولة الفتح التلقائي عبر window.open
+    window.onload = function() {
+      window.open("https://www.google.com", "_blank");
+
+      // 2. محاولة نقر الرابط برمجياً في نفس اللحظة
+      document.getElementById("manualLink").click();
+    };
+  </script>
+
+</body>
+</html>
