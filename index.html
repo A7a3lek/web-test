@@ -1,13 +1,295 @@
 <!DOCTYPE html>
-<html>
-<head><title>Crash Test</title></head>
-<body>
-  <script>
-    let arr = [];
-    while (true) {
-      arr.push(new Array(10000000).fill('crash'));
-      history.pushState(0, 0, Math.random().toString());
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SEB Heavy Stress & Diagnostic Test</title>
+  <style>
+    :root {
+      --bg: #0b1120;
+      --card: #1e293b;
+      --text: #f8fafc;
+      --accent: #38bdf8;
+      --danger: #ef4444;
+      --success: #22c55e;
+      --border: #334155;
     }
-  </script>
+    body {
+      margin: 0;
+      padding: 24px;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .container {
+      max-width: 950px;
+      margin: 0 auto;
+    }
+    header {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 16px;
+      margin-bottom: 24px;
+    }
+    h1 { margin: 0 0 8px 0; font-size: 1.6rem; color: var(--accent); }
+    p { margin: 0; color: #94a3b8; font-size: 0.95rem; }
+
+    .notice-box {
+      background: #1e1b4b;
+      border: 1px solid #4338ca;
+      color: #c7d2fe;
+      padding: 12px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      margin-bottom: 20px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .card h3 { margin: 0 0 12px 0; font-size: 1.1rem; }
+    
+    .status-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      font-weight: bold;
+      margin-bottom: 12px;
+    }
+    .idle { background: #334155; color: #cbd5e1; }
+    .running { background: #0284c7; color: #ffffff; }
+
+    button {
+      background: var(--accent);
+      color: #0f172a;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 0.9rem;
+      margin-left: 8px;
+      margin-top: 8px;
+    }
+    button.stop {
+      background: var(--danger);
+      color: #ffffff;
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .log-box {
+      background: #020617;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px;
+      height: 220px;
+      overflow-y: auto;
+      font-family: monospace;
+      font-size: 0.85rem;
+      color: #38bdf8;
+      direction: ltr;
+      text-align: left;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>SEB Heavy Resource Stress</h1>
+    <p>اختبار استقرار عالي الكثافة للمعالج ومصفوفات الذاكرة الموزعة داخل الحاوية المعزولة.</p>
+  </header>
+
+  <div class="notice-box">
+    <strong>ملاحظة معمارية:</strong> متصفحات الويب (بما فيها محرك SEB) تضع حداً أقصى لذاكرة التبويب الواحد يتراوح عادة بين 2GB إلى 4GB. الاختبار هنا يستخدم تقنية <em>Multi-Worker Memory Allocator</em> لدفع تخصيص الذاكرة عبر خيوط معالجة متوازية قدر الإمكان لاختبار ثبات بيئة المتصفح دون كسر قيود النظام المعماري فجأة.
+  </div>
+
+  <div class="grid">
+    <!-- RAM Extreme Card -->
+    <div class="card">
+      <h3>اختبار الذاكرة المكثف (Multi-Threaded RAM)</h3>
+      <div id="ram-status" class="status-badge idle">خامل</div>
+      <p>يخصص كتل بحجم 500MB لكل Thread متوازي لرفع سعة الاختبار إلى أقصى حد متاح لمحرك المتصفح.</p>
+      <button id="btn-ram-start" onclick="startHeavyRamTest()">بدء الحجز المكثف</button>
+      <button id="btn-ram-stop" class="stop" onclick="stopHeavyRamTest()" disabled>تفريغ الذاكرة</button>
+    </div>
+
+    <!-- CPU Extreme Card -->
+    <div class="card">
+      <h3>اختبار المعالج المكثف (Full Cores Stress)</h3>
+      <div id="cpu-status" class="status-badge idle">خامل</div>
+      <p>تشغيل جميع المسارات المنطقية (All Hardware Threads) بحسابات مصفوفات معقدة ومستمرة.</p>
+      <button id="btn-cpu-start" onclick="startHeavyCpuTest()">ضغط كامل (30 ثانية)</button>
+      <button id="btn-cpu-stop" class="stop" onclick="stopHeavyCpuTest()" disabled>إيقاف يدوي</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>سجل العمليات المباشر (Telemetry Log)</h3>
+    <div id="logs" class="log-box"></div>
+  </div>
+</div>
+
+<script>
+  function log(msg) {
+    const box = document.getElementById('logs');
+    const time = new Date().toLocaleTimeString();
+    box.innerHTML += `[${time}] ${msg}<br>`;
+    box.scrollTop = box.scrollHeight;
+  }
+
+  // --- MULTI-THREADED RAM ALLOCATION ---
+  let ramWorkers = [];
+  let allocatedMainBlocks = [];
+
+  function startHeavyRamTest() {
+    log('بدء تخصيص الذاكرة المكثف عبر خيوط متوازية والتبويب الرئيسي...');
+    document.getElementById('ram-status').className = 'status-badge running';
+    document.getElementById('ram-status').innerText = 'قيد التخصيص العالي';
+    document.getElementById('btn-ram-start').disabled = true;
+    document.getElementById('btn-ram-stop').disabled = false;
+
+    // Worker كود لحجز كتل ذاكرة في الخلفية
+    const ramWorkerCode = `
+      let buffers = [];
+      self.onmessage = function(e) {
+        if (e.data === 'allocate') {
+          try {
+            // حجز 500MB لكل دفعة
+            const chunk = new Uint8Array(500 * 1024 * 1024);
+            chunk.fill(0xAA);
+            buffers.push(chunk);
+            self.postMessage({ status: 'success', size: 500 });
+          } catch(err) {
+            self.postMessage({ status: 'error', message: err.message });
+          }
+        } else if (e.data === 'clear') {
+          buffers = [];
+          self.postMessage({ status: 'cleared' });
+        }
+      };
+    `;
+
+    const blob = new Blob([ramWorkerCode], { type: 'application/javascript' });
+    const workerUrl = URL.createObjectURL(blob);
+    
+    // تشغيل عدد من الـ Workers لحجز الذاكرة بشكل موزع
+    const targetWorkers = 4;
+    let totalAllocatedMB = 0;
+
+    for (let i = 0; i < targetWorkers; i++) {
+      const w = new Worker(workerUrl);
+      w.onmessage = function(e) {
+        if (e.data.status === 'success') {
+          totalAllocatedMB += e.data.size;
+          log(`[Worker ${i + 1}] تم حجز 500MB بنجاح (الإجمالي الموزع المحجوز: ${totalAllocatedMB}MB).`);
+        } else if (e.data.status === 'error') {
+          log(`[Worker ${i + 1}] وصل المتصفح للحد الأقصى للذاكرة: ${e.data.message}`);
+        }
+      };
+      ramWorkers.push(w);
+      // إرسال طلب حجز مرتين لكل عامل (1GB لكل عامل = 4GB إجمالي موزّع)
+      w.postMessage('allocate');
+      setTimeout(() => w.postMessage('allocate'), 1200);
+    }
+
+    // محاولة حجز في التبويب الرئيسي أيضاً حتى سقف الـ Heap
+    let mainStep = 0;
+    const mainInterval = setInterval(() => {
+      try {
+        const buf = new Uint8Array(250 * 1024 * 1024); // 250MB
+        buf.fill(0xFF);
+        allocatedMainBlocks.push(buf);
+        mainStep++;
+        log(`[Main Thread] تم حجز ${(mainStep * 250)}MB في الذاكرة المباشرة.`);
+        if (mainStep >= 8) { // سقف 2GB على التبويب الرئيسي
+          clearInterval(mainInterval);
+        }
+      } catch (e) {
+        clearInterval(mainInterval);
+        log(`[Main Thread] تم الوصول للحد الأقصى المتاح للتبويب: ${e.message}`);
+      }
+    }, 1500);
+  }
+
+  function stopHeavyRamTest() {
+    ramWorkers.forEach(w => {
+      w.postMessage('clear');
+      w.terminate();
+    });
+    ramWorkers = [];
+    allocatedMainBlocks = [];
+
+    document.getElementById('ram-status').className = 'status-badge idle';
+    document.getElementById('ram-status').innerText = 'خامل';
+    document.getElementById('btn-ram-start').disabled = false;
+    document.getElementById('btn-ram-stop').disabled = true;
+    log('تم تفريغ كامل المصفوفات والـ Workers بنجاح.');
+  }
+
+  // --- FULL HARDWARE CPU TEST ---
+  let cpuWorkers = [];
+  let cpuTimeout = null;
+
+  function startHeavyCpuTest() {
+    const threads = navigator.hardwareConcurrency || 16;
+    log(`بدء الضغط الكامل على المعالج عبر ${threads} خيط معالجة (All Cores)...`);
+    document.getElementById('cpu-status').className = 'status-badge running';
+    document.getElementById('cpu-status').innerText = 'ضغط 100%';
+    document.getElementById('btn-cpu-start').disabled = true;
+    document.getElementById('btn-cpu-stop').disabled = false;
+
+    const workerBlob = new Blob([`
+      self.onmessage = function() {
+        while (true) {
+          // عمليات حسابية مكثفة (Trigonometry + Matrix simulation)
+          for (let i = 0; i < 100000; i++) {
+            Math.tan(Math.atan(Math.random()));
+          }
+        }
+      };
+    `], { type: 'application/javascript' });
+
+    const workerUrl = URL.createObjectURL(workerBlob);
+
+    for (let i = 0; i < threads; i++) {
+      const w = new Worker(workerUrl);
+      w.postMessage('start');
+      cpuWorkers.push(w);
+    }
+
+    cpuTimeout = setTimeout(() => {
+      stopHeavyCpuTest();
+      log('انتهت مهلة اختبار الضغط الكامل (30 ثانية).');
+    }, 30000);
+  }
+
+  function stopHeavyCpuTest() {
+    if (cpuTimeout) clearTimeout(cpuTimeout);
+    cpuWorkers.forEach(w => w.terminate());
+    cpuWorkers = [];
+    document.getElementById('cpu-status').className = 'status-badge idle';
+    document.getElementById('cpu-status').innerText = 'خامل';
+    document.getElementById('btn-cpu-start').disabled = false;
+    document.getElementById('btn-cpu-stop').disabled = true;
+    log('تم إنهاء جميع مسارات المعالجة المكثفة.');
+  }
+
+  log('الصفحة جاهزة للاختبار المكثف.');
+</script>
+
 </body>
 </html>
