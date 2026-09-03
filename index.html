@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <title>SEB Network & URL Navigation Test</title>
+  <title>SEB Protocol & Popup Escape Test</title>
   <style>
     body {
       background: #0b0f19;
@@ -34,47 +34,41 @@
       margin: 6px 4px;
       font-size: 0.9rem;
     }
-    .btn-red { background: #ef4444; color: #fff; }
     .btn-blue { background: #0284c7; color: #fff; }
-    iframe {
-      width: 100%;
-      height: 200px;
-      border: 1px solid #334155;
-      border-radius: 6px;
-      background: #fff;
-      margin-top: 10px;
-    }
+    .btn-purple { background: #8b5cf6; color: #fff; }
+    .btn-red { background: #ef4444; color: #fff; }
   </style>
 </head>
 <body>
 
 <div class="container">
   <header style="margin-bottom: 24px;">
-    <h1 style="color: #38bdf8; margin: 0 0 8px 0;">اختبار تجاوز قيود الشبكة والروابط الخارجية</h1>
-    <p>فحص ما إذا كان SEB يمنع الانتقال لنطاقات أخرى بدون تفعيل URL Filtering الصريح.</p>
+    <h1 style="color: #f43f5e; margin: 0 0 8px 0;">اختبار استدعاء بروتوكولات الويندوز والطباعة</h1>
+    <p>فحص ما إذا كان SEB يسمح للروابط باستدعاء تطبيقات النظام الخارجية أو كسر الحاوية عبر النوافذ.</p>
   </header>
 
-  <!-- 1. رابط تشعبي مباشر -->
+  <!-- اختبار 1: بروتوكولات النظام -->
   <div class="card">
-    <h2>1. انتقال مباشر لنطاق مختلف (Direct Link Navigation)</h2>
-    <p>اضغط على الرابط لمحاولة الانتقال لموقع خارجي في نفس النافذة:</p>
-    <a href="https://www.google.com" class="btn btn-red">انتقال إلى Google (Direct A-Tag)</a>
-    <a href="https://en.wikipedia.org" class="btn btn-blue">انتقال إلى Wikipedia</a>
+    <h2>1. استدعاء بروتوكولات الويندوز (System URI Schemes)</h2>
+    <p>هذه الروابط تحاول إجبار النظام على فتح تطبيقات من خارج بيئة الـ Kiosk:</p>
+    <a href="ms-settings:" class="btn btn-red">فتح إعدادات ويندوز (ms-settings:)</a>
+    <a href="calculator:" class="btn btn-red">فتح الآلة الحاسبة (calculator:)</a>
+    <a href="mailto:test@example.com" class="btn btn-blue">فتح تطبيق البريد (mailto:)</a>
   </div>
 
-  <!-- 2. تحويل بالجافاسكريبت -->
+  <!-- اختبار 2: الطباعة المباشرة -->
   <div class="card">
-    <h2>2. تحويل برمجي إجباري (JS Redirection)</h2>
-    <p>محاولة تحويل الصفحة فورياً باستخدام أوامر الـ JavaScript:</p>
-    <button class="btn btn-red" onclick="window.location.href='https://www.bing.com'">تحويل عبر location.href</button>
-    <button class="btn btn-blue" onclick="window.location.replace('https://duckduckgo.com')">تحويل عبر location.replace</button>
+    <h2>2. استدعاء نافذة الطباعة (Print Dialog)</h2>
+    <p>محاولة فتح نافذة الطباعة البرمجية لمعرفة هل ستفتح نافذة طباعة الويندوز الأصلية أم سيتم حظرها:</p>
+    <button class="btn btn-purple" onclick="window.print()">استدعاء window.print()</button>
   </div>
 
-  <!-- 3. تضمين خارجي iFrame -->
+  <!-- اختبار 3: النوافذ المنبثقة -->
   <div class="card">
-    <h2>3. تضمين موقع خارجي داخل إطار (Embedded iFrame)</h2>
-    <p>هل يقوم المتصفح بتحميل صفحات خارجية مضمنة داخل إطار، أم يعترضها؟</p>
-    <iframe src="https://example.com"></iframe>
+    <h2>3. النوافذ المنبثقة المنفصلة (Popups & Target Blank)</h2>
+    <p>اختبار سلوك الروابط الخارجية عند محاولة فتح نافذة جديدة برابط خارجي:</p>
+    <a href="https://www.google.com" target="_blank" class="btn btn-blue">فتح Google في نافذة جديدة (target=_blank)</a>
+    <button class="btn btn-blue" onclick="window.open('https://www.bing.com', '_blank', 'width=500,height=500')">فتح نافذة منبثقة مقيدة (window.open)</button>
   </div>
 </div>
 
