@@ -3,18 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SEB Extreme Stress Engine</title>
+  <title>SEB WebGL & GPU Stress Diagnostic</title>
   <style>
     :root {
       --bg: #030712;
       --card: #0f172a;
-      --accent: #ef4444;
+      --accent: #8b5cf6;
+      --danger: #ef4444;
       --text: #f8fafc;
       --border: #1e293b;
     }
     body {
       margin: 0;
-      padding: 24px;
+      padding: 20px;
       font-family: system-ui, -apple-system, sans-serif;
       background: var(--bg);
       color: var(--text);
@@ -45,30 +46,30 @@
       padding: 16px;
     }
     .card h3 { margin: 0 0 10px 0; font-size: 1.1rem; }
-    
-    .status-badge {
-      display: inline-block;
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-size: 0.8rem;
-      font-weight: bold;
+
+    .metrics-bar {
+      display: flex;
+      gap: 20px;
       margin-bottom: 12px;
-      background: #334155;
-      color: #cbd5e1;
+      font-size: 0.95rem;
     }
-    .status-badge.active {
-      background: var(--accent);
-      color: #ffffff;
-      animation: pulse 1.5s infinite;
+    .metric-val {
+      font-weight: bold;
+      color: #38bdf8;
     }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.6; }
+
+    canvas {
+      width: 100%;
+      height: 280px;
+      background: #000;
+      border-radius: 6px;
+      display: block;
+      border: 1px solid var(--border);
     }
 
     button {
-      background: #38bdf8;
-      color: #020617;
+      background: var(--accent);
+      color: #ffffff;
       border: none;
       padding: 10px 18px;
       border-radius: 6px;
@@ -76,14 +77,13 @@
       font-weight: bold;
       font-size: 0.95rem;
       margin-left: 8px;
+      margin-top: 10px;
     }
     button.danger {
-      background: var(--accent);
-      color: #ffffff;
+      background: var(--danger);
     }
     button.stop {
       background: #475569;
-      color: #ffffff;
     }
     button:disabled {
       opacity: 0.4;
@@ -95,13 +95,14 @@
       border: 1px solid var(--border);
       border-radius: 6px;
       padding: 12px;
-      height: 250px;
+      height: 180px;
       overflow-y: auto;
       font-family: monospace;
       font-size: 0.85rem;
-      color: #38bdf8;
+      color: #a78bfa;
       direction: ltr;
       text-align: left;
+      margin-top: 12px;
     }
   </style>
 </head>
@@ -109,32 +110,39 @@
 
 <div class="container">
   <header>
-    <h1>SEB Max-Load Stress Suite</h1>
-    <p>تشغيل أقصى طاقة استهلاك للمعالج (32 مسار دائم) ومصفوفات ذاكرة نشطة القراءة والكتابة.</p>
+    <h1>SEB WebGL & GPU Stress Diagnostic</h1>
+    <p>فحص ثبات معالج الرسوميات (GPU)، ومقاومة تسريب الذاكرة الرسومية (VRAM)، وتتبع أعطال Context Loss.</p>
   </header>
 
+  <div class="card" style="margin-bottom: 20px;">
+    <div class="metrics-bar">
+      <div>FPS الفعلي: <span id="fps-val" class="metric-val">--</span></div>
+      <div>عدد المثلثات النشطة: <span id="triangles-count" class="metric-val">0</span></div>
+      <div>حالة سياق WebGL: <span id="context-status" class="metric-val" style="color: #22c55e;">سليم</span></div>
+    </div>
+    <canvas id="glcanvas"></canvas>
+  </div>
+
   <div class="grid">
-    <!-- RAM -->
+    <!-- Test 1: Geometry & Shaders -->
     <div class="card">
-      <h3>1. ضغط الذاكرة الفائق (Active Mutation)</h3>
-      <div id="ram-status" class="status-badge">خامل</div>
-      <p>يخصص كتل 500MB مستمرة مع كتابة بيانات عشوائية كل ثانية لإجبار المتصفح على حجز Physical RAM دون تفريغ.</p>
-      <button id="btn-ram-start" class="danger" onclick="startBrutalRam()">حجز مستمر حتى السقف</button>
-      <button id="btn-ram-stop" class="stop" onclick="stopBrutalRam()" disabled>تفريغ</button>
+      <h3>1. ضغط مضلعات وShaders</h3>
+      <p>مضاعفة استدعاءات الرسم وتوليد مصفوفات نقاط ضخمة لإجهاد المعالجة الحسابية لكرت الشاشة.</p>
+      <button id="btn-geo-start" onclick="increaseGeometryLoad()">مضاعفة الحمل (+20,000 مثلث)</button>
+      <button id="btn-geo-reset" class="stop" onclick="resetGeometry()">إعادة الضبط</button>
     </div>
 
-    <!-- CPU -->
+    <!-- Test 2: VRAM Saturation -->
     <div class="card">
-      <h3>2. ضغط المعالج الأقصى (32 Workers)</h3>
-      <div id="cpu-status" class="status-badge">خامل</div>
-      <p>إطلاق 32 مسار عمل مستقل يعمل بلا نهاية وبلا مؤقت، مع خوارزميات حسابية مكثفة للغاية.</p>
-      <button id="btn-cpu-start" class="danger" onclick="startBrutalCpu()">ضغط شامل مستمر</button>
-      <button id="btn-cpu-stop" class="stop" onclick="stopBrutalCpu()" disabled>إيقاف</button>
+      <h3>2. حجز الذاكرة الرسومية (VRAM Choke)</h3>
+      <p>توليد Textures بدقة 4K وحقنها مباشرة في VRAM لإجبار الكرت على إدارة الذاكرة الرسومية القصوى.</p>
+      <button id="btn-vram-start" class="danger" onclick="allocateVramTextures()">حقن كتل Textures (VRAM)</button>
+      <button id="btn-vram-clear" class="stop" onclick="clearVramTextures()">تفريغ الـ VRAM</button>
     </div>
   </div>
 
   <div class="card">
-    <h3>سجل الأداء المباشر</h3>
+    <h3>سجل تشخيص محرك الرسوميات (GPU Telemetry)</h3>
     <div id="logs" class="log-box"></div>
   </div>
 </div>
@@ -147,98 +155,193 @@
     box.scrollTop = box.scrollHeight;
   }
 
-  // --- BRUTAL RAM ALLOCATION (Continuous R/W Mutation) ---
-  let activeBuffers = [];
-  let ramInterval = null;
-  let totalAllocated = 0;
+  const canvas = document.getElementById('glcanvas');
+  const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
 
-  function startBrutalRam() {
-    log('بدء الحجز العنيف للذاكرة (Active Mutation Loop)...');
-    document.getElementById('ram-status').className = 'status-badge active';
-    document.getElementById('ram-status').innerText = 'تخصيص وكتابة نشطة';
-    document.getElementById('btn-ram-start').disabled = true;
-    document.getElementById('btn-ram-stop').disabled = false;
+  if (!gl) {
+    log('خطأ: متصفح SEB لا يدعم WebGL أو تم تعطيل التسريع الرسومي من الإعدادات!');
+    document.getElementById('context-status').innerText = 'غير مدعوم';
+    document.getElementById('context-status').style.color = '#ef4444';
+  } else {
+    // التقاط بيانات كرت الشاشة الحقيقي المكتشف
+    const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+    if (debugInfo) {
+      const vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL);
+      const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+      log(`تم اكتشاف المعالج الرسومي: ${renderer} (${vendor})`);
+    }
 
-    ramInterval = setInterval(() => {
-      try {
-        // حجز 500MB في كل نبضة
-        const size = 500 * 1024 * 1024;
-        const buf = new Uint8Array(size);
-        
-        // كتابة بيانات لتأكيد الحجز الفعلي في الـ Physical RAM
-        for (let i = 0; i < buf.length; i += 4096) {
-          buf[i] = (Math.random() * 255) | 0;
-        }
-        
-        activeBuffers.push(buf);
-        totalAllocated += 500;
-        log(`تم حجز وكتابة 500MB جديدة (الإجمالي المحجوز: ${totalAllocated}MB).`);
+    // مراقبة انهيار سياق الرسوميات (Context Loss Detection)
+    canvas.addEventListener('webglcontextlost', (e) => {
+      e.preventDefault();
+      log('تحذير شديد: حدث WebGL Context Lost! كارت الشاشة تعثر وأعاد تهيئة نفسه.');
+      document.getElementById('context-status').innerText = 'Context Lost (انهار)';
+      document.getElementById('context-status').style.color = '#ef4444';
+    }, false);
 
-      } catch (e) {
-        clearInterval(ramInterval);
-        log(`[الحد الأقصى للمتصفح] توقف الحجز بسبب استنزاف المسموح به: ${e.message}`);
-        document.getElementById('ram-status').className = 'status-badge';
-        document.getElementById('ram-status').innerText = 'تم الوصول للسقف';
+    canvas.addEventListener('webglcontextrestored', () => {
+      log('تمت استعادة سياق WebGL بنجاح.');
+      document.getElementById('context-status').innerText = 'تم الاسترجاع';
+      document.getElementById('context-status').style.color = '#22c55e';
+      initShaders();
+    }, false);
+  }
+
+  // --- WebGL Pipeline Setup ---
+  let program, positionLocation, colorLocation;
+  let vertexBuffer;
+  let triangleMultiplier = 1;
+  let baseTriangles = 5000;
+
+  function initShaders() {
+    if (!gl) return;
+    const vsSource = `
+      attribute vec2 a_position;
+      attribute vec4 a_color;
+      varying vec4 v_color;
+      uniform float u_angle;
+      void main() {
+        float s = sin(u_angle);
+        float c = cos(u_angle);
+        vec2 rotatedPosition = vec2(
+          a_position.x * c - a_position.y * s,
+          a_position.x * s + a_position.y * c
+        );
+        gl_Position = vec4(rotatedPosition, 0.0, 1.0);
+        v_color = a_color;
       }
-    }, 800);
-  }
-
-  function stopBrutalRam() {
-    if (ramInterval) clearInterval(ramInterval);
-    activeBuffers = [];
-    totalAllocated = 0;
-    document.getElementById('ram-status').className = 'status-badge';
-    document.getElementById('ram-status').innerText = 'خامل';
-    document.getElementById('btn-ram-start').disabled = false;
-    document.getElementById('btn-ram-stop').disabled = true;
-    log('تم تفريغ كافة مصفوفات الذاكرة.');
-  }
-
-  // --- BRUTAL CPU STRESS (32 Continuous Threads) ---
-  let cpuWorkers = [];
-
-  function startBrutalCpu() {
-    const threadCount = 32; // إجبار 32 خيط معالجة متوازي بغض النظر عن تقييد المتصفح
-    log(`إطلاق ${threadCount} مسار معالجة مكثف بلا توقف مؤقت...`);
-    document.getElementById('cpu-status').className = 'status-badge active';
-    document.getElementById('cpu-status').innerText = 'ضغط كامل مستمر (32 خيط)';
-    document.getElementById('btn-cpu-start').disabled = true;
-    document.getElementById('btn-cpu-stop').disabled = false;
-
-    const workerCode = `
-      self.onmessage = function() {
-        let x = 0.5;
-        while (true) {
-          // حسابات ثقيلة جداً تمنع تحسينات المحرك JIT من تخطيها
-          for (let i = 0; i < 500000; i++) {
-            x = Math.sin(x) * Math.cos(x) + Math.tan(x);
-          }
-        }
-      };
     `;
 
-    const blob = new Blob([workerCode], { type: 'application/javascript' });
-    const workerUrl = URL.createObjectURL(blob);
+    const fsSource = `
+      precision mediump float;
+      varying vec4 v_color;
+      void main() {
+        gl_FragColor = v_color;
+      }
+    `;
 
-    for (let i = 0; i < threadCount; i++) {
-      const w = new Worker(workerUrl);
-      w.postMessage('start');
-      cpuWorkers.push(w);
+    function createShader(type, src) {
+      const s = gl.createShader(type);
+      gl.shaderSource(s, src);
+      gl.compileShader(s);
+      return s;
     }
-    log('جميع المسارات تعمل بأقصى سرعة الآن.');
+
+    const vs = createShader(gl.VERTEX_SHADER, vsSource);
+    const fs = createShader(gl.FRAGMENT_SHADER, fsSource);
+    program = gl.createProgram();
+    gl.attachShader(program, vs);
+    gl.attachShader(program, fs);
+    gl.linkProgram(program);
+    gl.useProgram(program);
+
+    positionLocation = gl.getAttribLocation(program, 'a_position');
+    colorLocation = gl.getAttribLocation(program, 'a_color');
+
+    vertexBuffer = gl.createBuffer();
+    updateMesh();
   }
 
-  function stopBrutalCpu() {
-    cpuWorkers.forEach(w => w.terminate());
-    cpuWorkers = [];
-    document.getElementById('cpu-status').className = 'status-badge';
-    document.getElementById('cpu-status').innerText = 'خامل';
-    document.getElementById('btn-cpu-start').disabled = false;
-    document.getElementById('btn-cpu-stop').disabled = true;
-    log('تم إنهاء جميع مسارات الـ CPU.');
+  function updateMesh() {
+    const totalCount = baseTriangles * triangleMultiplier;
+    document.getElementById('triangles-count').innerText = totalCount.toLocaleString();
+    
+    const verts = new Float32Array(totalCount * 6); // 3 رؤوس لكل مثلث، وكل نقطة (x, y)
+    for (let i = 0; i < verts.length; i++) {
+      verts[i] = (Math.random() * 2) - 1;
+    }
+    
+    gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, verts, gl.STATIC_DRAW);
   }
 
-  log('النظام جاهز للاختبار الأقصى.');
+  function increaseGeometryLoad() {
+    triangleMultiplier += 4;
+    updateMesh();
+    log(`تمت مضاعفة المضلعات. الإجمالي الحالي: ${(baseTriangles * triangleMultiplier).toLocaleString()} مثلث.`);
+  }
+
+  function resetGeometry() {
+    triangleMultiplier = 1;
+    updateMesh();
+    log('تمت إعادة ضبط المضلعات إلى المستوى الأساسي.');
+  }
+
+  // --- VRAM Texture Flooding ---
+  let textures = [];
+
+  function allocateVramTextures() {
+    if (!gl) return;
+    log('حقن كتل نسيجية (4K Textures) مباشرة في VRAM...');
+    try {
+      for (let i = 0; i < 5; i++) {
+        const tex = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        // تخصيص مصفوفة بدقة 2048x2048 لملء الذاكرة الرسومية
+        const level = 0;
+        const internalFormat = gl.RGBA;
+        const width = 2048;
+        const height = 2048;
+        const border = 0;
+        const format = gl.RGBA;
+        const type = gl.UNSIGNED_BYTE;
+        const data = new Uint8Array(width * height * 4);
+        data.fill(200);
+
+        gl.texImage2D(gl.TEXTURE_2D, level, internalFormat, width, height, border, format, type, data);
+        textures.push(tex);
+      }
+      log(`تم حقن 5 كتل عالية الدقة في VRAM بنجاح (الإجمالي النشط: ${textures.length} كتل).`);
+    } catch (e) {
+      log(`فشل تخصيص الـ VRAM: ${e.message}`);
+    }
+  }
+
+  function clearVramTextures() {
+    textures.forEach(t => gl.deleteTexture(t));
+    textures = [];
+    log('تم تفريغ كافة الـ Textures المحجوزة في VRAM.');
+  }
+
+  // --- Render & FPS Loop ---
+  let angle = 0;
+  let frames = 0;
+  let lastTime = performance.now();
+
+  function render() {
+    if (gl && program) {
+      canvas.width = canvas.clientWidth;
+      canvas.height = canvas.clientHeight;
+      gl.viewport(0, 0, canvas.width, canvas.height);
+
+      gl.clearColor(0.02, 0.04, 0.08, 1.0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+
+      angle += 0.01;
+      const angleLoc = gl.getUniformLocation(program, 'u_angle');
+      gl.uniform1f(angleLoc, angle);
+
+      gl.enableVertexAttribArray(positionLocation);
+      gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+      gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+
+      gl.drawArrays(gl.TRIANGLES, 0, (baseTriangles * triangleMultiplier) * 3);
+    }
+
+    frames++;
+    const now = performance.now();
+    if (now - lastTime >= 1000) {
+      document.getElementById('fps-val').innerText = frames;
+      frames = 0;
+      lastTime = now;
+    }
+
+    requestAnimationFrame(render);
+  }
+
+  initShaders();
+  requestAnimationFrame(render);
+  log('محرك فحص الرسوميات جاهز للاختبار.');
 </script>
 
 </body>
