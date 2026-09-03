@@ -3,34 +3,34 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SEB WebGL & GPU Stress Diagnostic</title>
+  <title>SEB Kiosk Integrity & Crash Test</title>
   <style>
     :root {
-      --bg: #030712;
+      --bg: #050811;
       --card: #0f172a;
-      --accent: #8b5cf6;
       --danger: #ef4444;
+      --warning: #f59e0b;
       --text: #f8fafc;
       --border: #1e293b;
     }
     body {
       margin: 0;
-      padding: 20px;
+      padding: 24px;
       font-family: system-ui, -apple-system, sans-serif;
       background: var(--bg);
       color: var(--text);
       line-height: 1.5;
     }
     .container {
-      max-width: 950px;
+      max-width: 900px;
       margin: 0 auto;
     }
     header {
-      border-bottom: 2px solid var(--accent);
+      border-bottom: 2px solid var(--danger);
       padding-bottom: 12px;
       margin-bottom: 20px;
     }
-    h1 { margin: 0; font-size: 1.6rem; color: var(--accent); }
+    h1 { margin: 0; font-size: 1.6rem; color: var(--danger); }
     p { margin: 6px 0 0 0; color: #94a3b8; font-size: 0.9rem; }
 
     .grid {
@@ -47,62 +47,47 @@
     }
     .card h3 { margin: 0 0 10px 0; font-size: 1.1rem; }
 
-    .metrics-bar {
-      display: flex;
-      gap: 20px;
-      margin-bottom: 12px;
-      font-size: 0.95rem;
-    }
-    .metric-val {
-      font-weight: bold;
-      color: #38bdf8;
-    }
-
-    canvas {
-      width: 100%;
-      height: 280px;
-      background: #000;
-      border-radius: 6px;
-      display: block;
-      border: 1px solid var(--border);
-    }
-
     button {
-      background: var(--accent);
       color: #ffffff;
       border: none;
-      padding: 10px 18px;
+      padding: 12px 18px;
       border-radius: 6px;
       cursor: pointer;
       font-weight: bold;
       font-size: 0.95rem;
-      margin-left: 8px;
+      width: 100%;
       margin-top: 10px;
     }
-    button.danger {
-      background: var(--danger);
-    }
-    button.stop {
-      background: #475569;
-    }
-    button:disabled {
-      opacity: 0.4;
-      cursor: not-allowed;
-    }
+    .btn-freeze { background: var(--warning); color: #000; }
+    .btn-crash { background: var(--danger); }
+    .btn-loop { background: #8b5cf6; }
 
+    .counter-box {
+      background: #020617;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 16px;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    #counter-display {
+      font-size: 2.2rem;
+      font-weight: bold;
+      color: #38bdf8;
+      font-family: monospace;
+    }
     .log-box {
       background: #020617;
       border: 1px solid var(--border);
       border-radius: 6px;
       padding: 12px;
-      height: 180px;
+      height: 150px;
       overflow-y: auto;
       font-family: monospace;
       font-size: 0.85rem;
-      color: #a78bfa;
+      color: #ef4444;
       direction: ltr;
       text-align: left;
-      margin-top: 12px;
     }
   </style>
 </head>
@@ -110,39 +95,40 @@
 
 <div class="container">
   <header>
-    <h1>SEB WebGL & GPU Stress Diagnostic</h1>
-    <p>فحص ثبات معالج الرسوميات (GPU)، ومقاومة تسريب الذاكرة الرسومية (VRAM)، وتتبع أعطال Context Loss.</p>
+    <h1>SEB Kiosk Integrity & Boundary Test</h1>
+    <p>اختبار سلوك الحاوية الأمنية: هل سينهار SEB ويعيدك للويندوز العادي، أم سيتعامل مع التجميد والإسقاط؟</p>
   </header>
 
-  <div class="card" style="margin-bottom: 20px;">
-    <div class="metrics-bar">
-      <div>FPS الفعلي: <span id="fps-val" class="metric-val">--</span></div>
-      <div>عدد المثلثات النشطة: <span id="triangles-count" class="metric-val">0</span></div>
-      <div>حالة سياق WebGL: <span id="context-status" class="metric-val" style="color: #22c55e;">سليم</span></div>
-    </div>
-    <canvas id="glcanvas"></canvas>
+  <div class="counter-box">
+    <div>عداد الحركة الحية (إذا توقف هذا الرقم، فالواجهة الرئيسية متجمدة تماماً):</div>
+    <div id="counter-display">0</div>
   </div>
 
   <div class="grid">
-    <!-- Test 1: Geometry & Shaders -->
+    <!-- Test 1: Event Loop Lock -->
     <div class="card">
-      <h3>1. ضغط مضلعات وShaders</h3>
-      <p>مضاعفة استدعاءات الرسم وتوليد مصفوفات نقاط ضخمة لإجهاد المعالجة الحسابية لكرت الشاشة.</p>
-      <button id="btn-geo-start" onclick="increaseGeometryLoad()">مضاعفة الحمل (+20,000 مثلث)</button>
-      <button id="btn-geo-reset" class="stop" onclick="resetGeometry()">إعادة الضبط</button>
+      <h3>1. تجميد الواجهة المباشر (Main Thread Lock)</h3>
+      <p>يقوم بقفل الـ Event Loop بالكامل لمدة 20 ثانية. اختبر هل شريط SEB وزر الخروج يستجيبان أثناء التجميد؟</p>
+      <button class="btn-freeze" onclick="lockMainThread(20)">تجميد لمدة 20 ثانية</button>
     </div>
 
-    <!-- Test 2: VRAM Saturation -->
+    <!-- Test 2: Call Stack Exhaustion -->
     <div class="card">
-      <h3>2. حجز الذاكرة الرسومية (VRAM Choke)</h3>
-      <p>توليد Textures بدقة 4K وحقنها مباشرة في VRAM لإجبار الكرت على إدارة الذاكرة الرسومية القصوى.</p>
-      <button id="btn-vram-start" class="danger" onclick="allocateVramTextures()">حقن كتل Textures (VRAM)</button>
-      <button id="btn-vram-clear" class="stop" onclick="clearVramTextures()">تفريغ الـ VRAM</button>
+      <h3>2. كسر الـ Call Stack (Stack Overflow)</h3>
+      <p>استدعاء دالة متداخلة بلا نهاية لإجبار محرك المتصفح على مواجهة Maximum Call Stack Exceeded.</p>
+      <button class="btn-loop" onclick="triggerStackOverflow()">إحداث Stack Overflow</button>
+    </div>
+
+    <!-- Test 3: Tab Memory Exploit -->
+    <div class="card" style="grid-column: span 2;">
+      <h3>3. إسقاط المعالجة بالكامل (Hard Renderer Crash)</h3>
+      <p>محاولة خنق التبويب بملايين إدخالات التاريخ والمصفوفات المباشرة لدفع نظام Chromium لإسقاط التبويب (Tab Crash).</p>
+      <button class="btn-crash" onclick="forceTabCrash()">بدء هجوم الإسقاط الفوري (Crash Attempt)</button>
     </div>
   </div>
 
   <div class="card">
-    <h3>سجل تشخيص محرك الرسوميات (GPU Telemetry)</h3>
+    <h3>سجل الأحداث</h3>
     <div id="logs" class="log-box"></div>
   </div>
 </div>
@@ -155,193 +141,53 @@
     box.scrollTop = box.scrollHeight;
   }
 
-  const canvas = document.getElementById('glcanvas');
-  const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+  // عداد حي لاختبار تجمد الواجهة
+  let count = 0;
+  setInterval(() => {
+    count++;
+    document.getElementById('counter-display').innerText = count;
+  }, 100);
 
-  if (!gl) {
-    log('خطأ: متصفح SEB لا يدعم WebGL أو تم تعطيل التسريع الرسومي من الإعدادات!');
-    document.getElementById('context-status').innerText = 'غير مدعوم';
-    document.getElementById('context-status').style.color = '#ef4444';
-  } else {
-    // التقاط بيانات كرت الشاشة الحقيقي المكتشف
-    const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-    if (debugInfo) {
-      const vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL);
-      const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
-      log(`تم اكتشاف المعالج الرسومي: ${renderer} (${vendor})`);
-    }
-
-    // مراقبة انهيار سياق الرسوميات (Context Loss Detection)
-    canvas.addEventListener('webglcontextlost', (e) => {
-      e.preventDefault();
-      log('تحذير شديد: حدث WebGL Context Lost! كارت الشاشة تعثر وأعاد تهيئة نفسه.');
-      document.getElementById('context-status').innerText = 'Context Lost (انهار)';
-      document.getElementById('context-status').style.color = '#ef4444';
-    }, false);
-
-    canvas.addEventListener('webglcontextrestored', () => {
-      log('تمت استعادة سياق WebGL بنجاح.');
-      document.getElementById('context-status').innerText = 'تم الاسترجاع';
-      document.getElementById('context-status').style.color = '#22c55e';
-      initShaders();
-    }, false);
-  }
-
-  // --- WebGL Pipeline Setup ---
-  let program, positionLocation, colorLocation;
-  let vertexBuffer;
-  let triangleMultiplier = 1;
-  let baseTriangles = 5000;
-
-  function initShaders() {
-    if (!gl) return;
-    const vsSource = `
-      attribute vec2 a_position;
-      attribute vec4 a_color;
-      varying vec4 v_color;
-      uniform float u_angle;
-      void main() {
-        float s = sin(u_angle);
-        float c = cos(u_angle);
-        vec2 rotatedPosition = vec2(
-          a_position.x * c - a_position.y * s,
-          a_position.x * s + a_position.y * c
-        );
-        gl_Position = vec4(rotatedPosition, 0.0, 1.0);
-        v_color = a_color;
+  // 1. تجميد خيط الواجهة لـ X ثانية
+  function lockMainThread(seconds) {
+    log(`تجميد الخيط الرئيسي لمدة ${seconds} ثانية...`);
+    setTimeout(() => {
+      const start = Date.now();
+      // حلقة تكرار متزامنة تمنع أي حدث آخر في المتصفح
+      while (Date.now() - start < seconds * 1000) {
+        Math.sqrt(Math.random());
       }
-    `;
-
-    const fsSource = `
-      precision mediump float;
-      varying vec4 v_color;
-      void main() {
-        gl_FragColor = v_color;
-      }
-    `;
-
-    function createShader(type, src) {
-      const s = gl.createShader(type);
-      gl.shaderSource(s, src);
-      gl.compileShader(s);
-      return s;
-    }
-
-    const vs = createShader(gl.VERTEX_SHADER, vsSource);
-    const fs = createShader(gl.FRAGMENT_SHADER, fsSource);
-    program = gl.createProgram();
-    gl.attachShader(program, vs);
-    gl.attachShader(program, fs);
-    gl.linkProgram(program);
-    gl.useProgram(program);
-
-    positionLocation = gl.getAttribLocation(program, 'a_position');
-    colorLocation = gl.getAttribLocation(program, 'a_color');
-
-    vertexBuffer = gl.createBuffer();
-    updateMesh();
+      log('انتهت فترة التجميد واستعادت الواجهة نشاطها.');
+    }, 100);
   }
 
-  function updateMesh() {
-    const totalCount = baseTriangles * triangleMultiplier;
-    document.getElementById('triangles-count').innerText = totalCount.toLocaleString();
-    
-    const verts = new Float32Array(totalCount * 6); // 3 رؤوس لكل مثلث، وكل نقطة (x, y)
-    for (let i = 0; i < verts.length; i++) {
-      verts[i] = (Math.random() * 2) - 1;
-    }
-    
-    gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, verts, gl.STATIC_DRAW);
-  }
-
-  function increaseGeometryLoad() {
-    triangleMultiplier += 4;
-    updateMesh();
-    log(`تمت مضاعفة المضلعات. الإجمالي الحالي: ${(baseTriangles * triangleMultiplier).toLocaleString()} مثلث.`);
-  }
-
-  function resetGeometry() {
-    triangleMultiplier = 1;
-    updateMesh();
-    log('تمت إعادة ضبط المضلعات إلى المستوى الأساسي.');
-  }
-
-  // --- VRAM Texture Flooding ---
-  let textures = [];
-
-  function allocateVramTextures() {
-    if (!gl) return;
-    log('حقن كتل نسيجية (4K Textures) مباشرة في VRAM...');
+  // 2. كسر الـ Call Stack
+  function triggerStackOverflow() {
+    log('محاولة كسر الـ Call Stack...');
     try {
-      for (let i = 0; i < 5; i++) {
-        const tex = gl.createTexture();
-        gl.bindTexture(gl.TEXTURE_2D, tex);
-        // تخصيص مصفوفة بدقة 2048x2048 لملء الذاكرة الرسومية
-        const level = 0;
-        const internalFormat = gl.RGBA;
-        const width = 2048;
-        const height = 2048;
-        const border = 0;
-        const format = gl.RGBA;
-        const type = gl.UNSIGNED_BYTE;
-        const data = new Uint8Array(width * height * 4);
-        data.fill(200);
-
-        gl.texImage2D(gl.TEXTURE_2D, level, internalFormat, width, height, border, format, type, data);
-        textures.push(tex);
+      function recurse() {
+        recurse();
       }
-      log(`تم حقن 5 كتل عالية الدقة في VRAM بنجاح (الإجمالي النشط: ${textures.length} كتل).`);
+      recurse();
     } catch (e) {
-      log(`فشل تخصيص الـ VRAM: ${e.message}`);
+      log(`التقط المتصفح الاستثناء بأمان ومنع الانهيار: ${e.message}`);
     }
   }
 
-  function clearVramTextures() {
-    textures.forEach(t => gl.deleteTexture(t));
-    textures = [];
-    log('تم تفريغ كافة الـ Textures المحجوزة في VRAM.');
+  // 3. هجوم إسقاط التبويب لإجباره على الخروج
+  function forceTabCrash() {
+    log('جارٍ تنفيذ هجوم إسقاط التبويب (PushState + Array Choke)...');
+    setTimeout(() => {
+      let arr = [];
+      while (true) {
+        // حجز عنيف جداً ومتزامن على الـ Main Thread مع تعديل الـ History
+        arr.push(new Array(5000000).fill('CRASH'));
+        history.pushState(0, 0, Math.random().toString());
+      }
+    }, 100);
   }
 
-  // --- Render & FPS Loop ---
-  let angle = 0;
-  let frames = 0;
-  let lastTime = performance.now();
-
-  function render() {
-    if (gl && program) {
-      canvas.width = canvas.clientWidth;
-      canvas.height = canvas.clientHeight;
-      gl.viewport(0, 0, canvas.width, canvas.height);
-
-      gl.clearColor(0.02, 0.04, 0.08, 1.0);
-      gl.clear(gl.COLOR_BUFFER_BIT);
-
-      angle += 0.01;
-      const angleLoc = gl.getUniformLocation(program, 'u_angle');
-      gl.uniform1f(angleLoc, angle);
-
-      gl.enableVertexAttribArray(positionLocation);
-      gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-      gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
-
-      gl.drawArrays(gl.TRIANGLES, 0, (baseTriangles * triangleMultiplier) * 3);
-    }
-
-    frames++;
-    const now = performance.now();
-    if (now - lastTime >= 1000) {
-      document.getElementById('fps-val').innerText = frames;
-      frames = 0;
-      lastTime = now;
-    }
-
-    requestAnimationFrame(render);
-  }
-
-  initShaders();
-  requestAnimationFrame(render);
-  log('محرك فحص الرسوميات جاهز للاختبار.');
+  log('جاهز لاختبار كسر بيئة الـ Kiosk.');
 </script>
 
 </body>
