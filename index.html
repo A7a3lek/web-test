@@ -2,10 +2,10 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <title>SEB Clipboard & Context Menu Test</title>
+  <title>SEB Network & URL Navigation Test</title>
   <style>
     body {
-      background: #0f172a;
+      background: #0b0f19;
       color: #f8fafc;
       font-family: system-ui, sans-serif;
       padding: 30px;
@@ -23,36 +23,26 @@
     }
     h2 { margin-top: 0; color: #38bdf8; font-size: 1.2rem; }
     p { color: #94a3b8; font-size: 0.95rem; }
-    textarea, input[type="text"] {
-      width: 100%;
-      background: #020617;
-      border: 1px solid #334155;
-      color: #38bdf8;
-      padding: 10px;
-      border-radius: 6px;
-      font-family: monospace;
-      box-sizing: border-box;
-      margin-top: 8px;
-    }
     .btn {
-      background: #38bdf8;
-      color: #020617;
+      display: inline-block;
       padding: 10px 18px;
       border-radius: 6px;
       font-weight: bold;
+      text-decoration: none;
       cursor: pointer;
       border: none;
-      margin-top: 10px;
+      margin: 6px 4px;
+      font-size: 0.9rem;
     }
-    .log-box {
-      background: #020617;
+    .btn-red { background: #ef4444; color: #fff; }
+    .btn-blue { background: #0284c7; color: #fff; }
+    iframe {
+      width: 100%;
+      height: 200px;
       border: 1px solid #334155;
       border-radius: 6px;
-      padding: 12px;
+      background: #fff;
       margin-top: 10px;
-      color: #22c55e;
-      font-family: monospace;
-      font-size: 0.9rem;
     }
   </style>
 </head>
@@ -60,51 +50,33 @@
 
 <div class="container">
   <header style="margin-bottom: 24px;">
-    <h1 style="color: #38bdf8; margin: 0 0 8px 0;">اختبار الحافظة (Clipboard) وسلوك القوائم</h1>
-    <p>فحص تسريب النصوص المنسوخة من خارج الـ Kiosk واختبار القوائم السياقية.</p>
+    <h1 style="color: #38bdf8; margin: 0 0 8px 0;">اختبار تجاوز قيود الشبكة والروابط الخارجية</h1>
+    <p>فحص ما إذا كان SEB يمنع الانتقال لنطاقات أخرى بدون تفعيل URL Filtering الصريح.</p>
   </header>
 
-  <!-- اختبار الحافظة -->
+  <!-- 1. رابط تشعبي مباشر -->
   <div class="card">
-    <h2>1. اختبار قراءة الحافظة المنسوخة (Clipboard Leak)</h2>
-    <p>اضغط في المربع أدناه وجرب الضغط على <strong>Ctrl + V</strong> (لصق)، أو اضغط الزر لقراءة الحافظة برمجياً:</p>
-    <textarea id="paste-box" rows="3" placeholder="اضغط هنا وجرب اللصق (Ctrl + V)..."></textarea>
-    <br>
-    <button class="btn" onclick="readClipboard()">قراءة محتوى الحافظة برمجياً (Clipboard API)</button>
-    <div id="clip-result" class="log-box">في انتظار التجربة...</div>
+    <h2>1. انتقال مباشر لنطاق مختلف (Direct Link Navigation)</h2>
+    <p>اضغط على الرابط لمحاولة الانتقال لموقع خارجي في نفس النافذة:</p>
+    <a href="https://www.google.com" class="btn btn-red">انتقال إلى Google (Direct A-Tag)</a>
+    <a href="https://en.wikipedia.org" class="btn btn-blue">انتقال إلى Wikipedia</a>
   </div>
 
-  <!-- اختبار الكليك يمين واختصارات التفتيش -->
+  <!-- 2. تحويل بالجافاسكريبت -->
   <div class="card">
-    <h2>2. اختبار القائمة السياقية (Context Menu)</h2>
-    <p>اضغط كليك يمين في أي مكان داخل هذه المساحة المظللة:</p>
-    <div style="background: #020617; border: 1px dashed #38bdf8; padding: 25px; border-radius: 6px; text-align: center;">
-      اضغط كليك يمين هنا 🖱️
-    </div>
-    <p style="margin-top: 12px; font-size: 0.85rem; color: #94a3b8;">
-      هل تظهر خيارات مثل: <em>Inspect Element</em> أو <em>View Source</em> أو <em>Save Page As</em>؟
-    </p>
+    <h2>2. تحويل برمجي إجباري (JS Redirection)</h2>
+    <p>محاولة تحويل الصفحة فورياً باستخدام أوامر الـ JavaScript:</p>
+    <button class="btn btn-red" onclick="window.location.href='https://www.bing.com'">تحويل عبر location.href</button>
+    <button class="btn btn-blue" onclick="window.location.replace('https://duckduckgo.com')">تحويل عبر location.replace</button>
+  </div>
+
+  <!-- 3. تضمين خارجي iFrame -->
+  <div class="card">
+    <h2>3. تضمين موقع خارجي داخل إطار (Embedded iFrame)</h2>
+    <p>هل يقوم المتصفح بتحميل صفحات خارجية مضمنة داخل إطار، أم يعترضها؟</p>
+    <iframe src="https://example.com"></iframe>
   </div>
 </div>
-
-<script>
-  async function readClipboard() {
-    const resBox = document.getElementById('clip-result');
-    try {
-      const text = await navigator.clipboard.readText();
-      if (text) {
-        resBox.innerText = "تمت قراءة النص المنسوخ بنجاح:\n" + text;
-        resBox.style.color = "#ef4444";
-      } else {
-        resBox.innerText = "الحافظة فارغة حالياً.";
-        resBox.style.color = "#38bdf8";
-      }
-    } catch (err) {
-      resBox.innerText = "تم حظر قراءة الحافظة بواسطة المتصفح: " + err.message;
-      resBox.style.color = "#22c55e";
-    }
-  }
-</script>
 
 </body>
 </html>
